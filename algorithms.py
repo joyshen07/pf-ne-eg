@@ -191,7 +191,8 @@ class SaddlePointAlgorithm(ABC):
                 break
 
             if verbose and (i % 100 == 0 or i < 10):
-                print(f"Iter {i}: {convergence_metric} = {self.history[convergence_metric][-1]:.6f}")
+                print(f"Iter {i}: {convergence_metric} = {self.history[convergence_metric][-1]:.6f}, "
+                      f"stepsize = {self.step_size: .5f}")
 
         result = {
             # 'final_x': x,
@@ -215,7 +216,7 @@ class SaddlePointAlgorithm(ABC):
         self.history = {k: [] for k in self.history.keys()}
 
 
-class SimultaneousGradientDescent(SaddlePointAlgorithm):
+class SPMirrorDescent(SaddlePointAlgorithm):
     """Simultaneous gradient descent-ascent"""
 
     def __init__(self, lipschitz: float, diameter: float, max_iter: int):
@@ -262,7 +263,7 @@ class Extragradient(SaddlePointAlgorithm):
         return x_new_proj, y_new_proj
 
 
-class AdaptiveErgodicExtragradient(SaddlePointAlgorithm):
+class AdaptiveMirrorProx(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
     def __init__(self, step_size: float, theta: float = 0.9):
@@ -294,6 +295,39 @@ class AdaptiveErgodicExtragradient(SaddlePointAlgorithm):
         # Update step size: α_{t+1} = min(α_t, c / L_t)
         step_size_candidate = self.theta / L_local if L_local > 0 else np.inf
         self.step_size = min(self.step_size, step_size_candidate)
+
+        return x_new_proj, y_new_proj
+
+
+class AdaptExtragradient(SaddlePointAlgorithm):
+    """Extragradient method with adaptive stepsize."""
+
+    def __init__(self, step_size: float, theta: float = 0.9):
+        super().__init__(f"Adapt EG (stepsize0={step_size:.3f})", track_iterates='last')
+        self.step_size = step_size
+        self.step_size_aux = self.step_size  # 1 / self.step_size ** 2
+
+    def step(self, x: np.ndarray, y: np.ndarray,
+             problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
+        # Extrapolation step
+        gx, gy = problem.gradient(x, y)
+        self.cached_gx, self.cached_gy = gx, gy
+        x_tilde = x - self.step_size * gx
+        y_tilde = y + self.step_size * gy
+
+        x_tilde, y_tilde = problem.project(x_tilde, y_tilde)
+
+        # Correction step using gradient at extrapolated point
+        gx_tilde, gy_tilde = problem.gradient(x_tilde, y_tilde)
+        x_new = x - self.step_size * gx_tilde
+        y_new = y + self.step_size * gy_tilde
+
+        x_new_proj, y_new_proj = problem.project(x_new, y_new)
+
+        # Update step size
+        self.step_size_aux += (iteration + 1) * ((x_new_proj - x_tilde) @ (x_new_proj - x_tilde) +
+                                                 (y_new_proj - y_tilde) @ (y_new_proj - y_tilde))
+        self.step_size = 1 / np.sqrt(self.step_size_aux)
 
         return x_new_proj, y_new_proj
 
@@ -367,7 +401,7 @@ class UniversalMirrorProx(SaddlePointAlgorithm):
         return x_new_proj, y_new_proj
 
 
-class AdaptiveExtragradient(SaddlePointAlgorithm):
+class PfNeEg(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
     def __init__(self, step_size: float = 0.5, theta: float = 0.9):
@@ -419,7 +453,7 @@ class AdaptiveExtragradient(SaddlePointAlgorithm):
         return x_new_proj, y_new_proj
 
 
-class BacktrackingExtragradient(SaddlePointAlgorithm):
+class PfNeEgBacktracking(SaddlePointAlgorithm):
     """Extragradient method with backtracking linesearch stepsize."""
 
     def __init__(self, step_size: float = 0.5, mult: float = 0.9, theta: float = 0.9):
