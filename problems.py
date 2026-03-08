@@ -19,6 +19,12 @@ def project_simplex(v: np.ndarray) -> np.ndarray:
     return np.maximum(v - theta, 0)
 
 
+def project_l2_ball(x: np.ndarray, radius: float) -> np.ndarray:
+    x = np.asarray(x)
+    norm = np.linalg.norm(x)
+    return x if norm <= radius else x / norm * radius
+
+
 def generate_sparse_matrix(d: int, sparsity: float, random_seed: int = None) -> np.ndarray:
     """Generate sparse random matrix for matrix game"""
     if random_seed is not None:
@@ -41,7 +47,7 @@ class SaddlePointProblem(ABC):
         np.random.seed(seed)
         self.x_opt = None
         self.y_opt = None
-        self.metrics = {}
+        self.metrics = {'nat_res': self.natural_residual}
         self._setup()
 
     @abstractmethod
@@ -87,9 +93,9 @@ class SaddlePointProblem(ABC):
         """Compute duality gap or other measure of optimality"""
         return np.nan  # Override in subclass if needed
 
-    def natural_residual(self, x: np.ndarray, y: np.ndarray, step_size: float = 1.0,
+    def natural_residual(self, x: np.ndarray, y: np.ndarray, step_size: float = 0.01,
                          gx: np.ndarray = None, gy: np.ndarray = None) -> float:
-        """Compute natural residual: ||z - Proj(z - α*F(z))||"""
+        """Compute normalized natural residual: 1/α * ||z - Proj(z - α*F(z))||"""
         # Use cached gradients if provided
         if gx is None or gy is None:
             gx, gy = self.gradient(x, y)
@@ -100,7 +106,7 @@ class SaddlePointProblem(ABC):
         residual_x = np.sum((x - x_proj)**2)
         residual_y = np.sum((y - y_proj)**2)
 
-        return np.sqrt(residual_x + residual_y)
+        return np.sqrt(residual_x + residual_y) / step_size
 
     def dist_to_opt(self, x: np.ndarray, y: np.ndarray) -> float:
         """Distance to the optimal solution"""
@@ -114,7 +120,7 @@ class SaddlePointProblem(ABC):
 
 
 class MatrixGameProblem(SaddlePointProblem):
-    """Zero-sum matrix game with simplex constraints (using barrier approximation)
+    """Zero-sum matrix game with simplex constraints
     min_x max_y x^T M y where x, y are on simplices"""
 
     def __init__(self, dim_x: int, dim_y: int, seed: int = 42,
@@ -135,29 +141,25 @@ class MatrixGameProblem(SaddlePointProblem):
 
     def _setup(self):
         self.M = generate_sparse_matrix(self.dim_x, self.sparsity, self.seed)
-        # self.mu = 0.1  # Barrier parameter
 
     def project(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Project onto probability simplices"""
         return project_simplex(x), project_simplex(y)
 
     def objective(self, x: np.ndarray, y: np.ndarray) -> float:
-        # # Add log barrier to enforce simplex constraints approximately
-        # barrier_x = -self.mu * np.sum(np.log(np.maximum(x, 1e-10)))
-        # barrier_y = self.mu * np.sum(np.log(np.maximum(y, 1e-10)))
-        return x @ self.M @ y  # + barrier_x + barrier_y
+        return x @ self.M @ y
 
     def grad_x(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        return self.M @ y  # - self.mu / np.maximum(x, 1e-10)
+        return self.M @ y
 
     def grad_y(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        return self.M.T @ x  # + self.mu / np.maximum(y, 1e-10)
+        return self.M.T @ x
 
     def initial_point(self) -> Tuple[np.ndarray, np.ndarray]:
         """Start with uniform distribution"""
         x0 = np.ones(self.dim_x) / self.dim_x
         y0 = np.ones(self.dim_y) / self.dim_y
-        return x0, y0
+        return self.project(x0, y0)
 
     def saddle_point_gap(self, x: np.ndarray, y: np.ndarray, obj_val: float = None) -> float:
         """Compute saddle point gap: max_y f(x,y) - min_x f(x,y)
@@ -175,6 +177,104 @@ class MatrixGameProblem(SaddlePointProblem):
         min_val = np.min(self.M @ y)
 
         return max_val - min_val
+
+
+class Bilinear(SaddlePointProblem):
+    """Bilinear saddle point problem
+    min_x max_y x^T M y where x is unconstrained, y is in L_inf norm ball"""
+
+    def __init__(self, dim_x: int, dim_y: int, seed: int = 42,
+                 sparsity: float = 1.0, matrix: np.ndarray = None):
+        """Initialize matrix game problem
+
+        Args:
+            dim_x: Dimension of x (rows of M)
+            dim_y: Dimension of y (columns of M)
+            seed: Random seed
+            sparsity: Probability κ that a matrix entry is nonzero (0 < κ <= 1)
+            matrix: Optional pre-specified matrix M. If None, generates random sparse matrix
+        """
+        self.sparsity = sparsity
+        super().__init__(dim_x, dim_y, seed)
+
+    def _setup(self):
+        self.M = generate_sparse_matrix(self.dim_x, self.sparsity, self.seed)
+
+    def project(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Project onto probability simplices"""
+        return x, np.clip(y, -1, 1)
+
+    def objective(self, x: np.ndarray, y: np.ndarray) -> float:
+        return x @ self.M @ y
+
+    def grad_x(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return self.M @ y
+
+    def grad_y(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return self.M.T @ x
+
+    def initial_point(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Start with uniform distribution"""
+        x0 = np.random.randn(self.dim_x) / self.dim_x
+        y0 = np.random.randn(self.dim_y) / self.dim_y
+        return self.project(x0, y0)
+
+
+class LASSO(SaddlePointProblem):
+    """LASSO as a saddle point problem
+    min_x max_y {1/2 * ||A x - b||_2^2 + x^T y}
+    where x is unconstrained, ||y||_inf <= lmd"""
+
+    def __init__(self, dim_x: int, dim_y: int, seed: int = 42, lmd: float = 1.0,
+                 sparsity: float = 1.0, matrix: np.ndarray = None):
+        """Initialize matrix game problem
+
+        Args:
+            dim_x: Dimension of x (rows of M)
+            dim_y: Dimension of y (columns of M)
+            seed: Random seed
+            sparsity: Probability κ that a matrix entry is nonzero (0 < κ <= 1)
+            matrix: Optional pre-specified matrix M. If None, generates random sparse matrix
+        """
+        self.lmd = lmd
+        self.sparsity = sparsity
+        super().__init__(dim_x, dim_y, seed)
+
+    def _setup(self):
+        self.A = np.random.randn(self.dim_y, self.dim_x)
+        # Normalize columns to have unit norm (standard for Lasso)
+        self.A /= np.linalg.norm(self.A, axis=0)
+
+        # Create a true sparse signal x
+        x_true = np.zeros(self.dim_x)
+        indices = np.random.choice(self.dim_x, int(self.dim_x * self.sparsity), replace=False)
+        x_true[indices] = np.random.randn(len(indices))
+
+        # Generate observations with some noise
+        self.b = self.A @ x_true + 0.05 * np.random.randn(self.dim_y)
+
+        # Standard rule for picking lambda
+        self.lmd = 0.1 * np.max(np.abs(self.A.T @ self.b))
+
+    def project(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Project onto probability simplices"""
+        return x, np.clip(y, -self.lmd, self.lmd)
+
+    def objective(self, x: np.ndarray, y: np.ndarray) -> float:
+        residual = self.A @ x - self.b
+        return 0.5 * np.sum(residual ** 2) + self.lmd * y.T @ self.A @ x
+
+    def grad_x(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return self.A.T @ (self.A @ x - self.b) + self.A.T @ y
+
+    def grad_y(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return self.A @ x
+
+    def initial_point(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Start with uniform distribution"""
+        x0 = np.zeros(self.dim_x)
+        y0 = np.zeros(self.dim_y)
+        return self.project(x0, y0)
 
 
 class MESP(SaddlePointProblem):

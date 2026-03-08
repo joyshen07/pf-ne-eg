@@ -12,7 +12,7 @@ DEFAULT_METRIC_PRIORITY = [
     'sp_gap',
     'lb_diff',
     'dist_to_opt',
-    'nat_residual'
+    'nat_res'
 ]
 
 
@@ -69,21 +69,23 @@ class SaddlePointAlgorithm(ABC):
         """
         self.name = name
         self.history = {
-            'obj_value': [],
-            'sp_gap': [],
-            'residual': [],
-            'dist_to_opt': [],
-            'lb_diff': [],
+            'time': [],
+            # Last iterate tracking
             'iterate_x': [],
             'iterate_y': [],
-            'time': [],
+            'obj_value': [],
+            'sp_gap': [],
+            'nat_res': [],
+            'dist_to_opt': [],
+            'lb_diff': [],
             # Average iterate tracking
+            'avg_x': [],
+            'avg_y': [],
             'avg_obj_value': [],
             'avg_sp_gap': [],
+            'avg_nat_res': [],
             'avg_dist_to_opt': [],
             'avg_lb_diff': [],
-            'avg_x': [],
-            'avg_y': []
         }
         self.cached_gx = None
         self.cached_gy = None

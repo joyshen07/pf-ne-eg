@@ -13,8 +13,8 @@ from algorithms import SaddlePointAlgorithm
 
 is_on_server = False
 try:
-    # Attempt interactive plotting
-    matplotlib.use("TkAgg")
+    # # Attempt interactive plotting
+    # matplotlib.use("TkAgg")
     plt.figure()
 except ModuleNotFoundError:
     # Fallback for servers
@@ -24,7 +24,8 @@ except ModuleNotFoundError:
 METRIC_NAME_MAPPING = {
     'sp_gap': 'Saddle-point gap',
     'dist_to_opt': 'Distance to proxy optimal solution',
-    'lb_diff': r'lower bound $-$ best lower bound'
+    'lb_diff': r'lower bound $-$ best lower bound',
+    'nat_res': r'natural residual'
 }
 
 
@@ -74,7 +75,6 @@ class ExperimentRunner:
                 trial_results = []
 
                 for trial in range(self.config.num_trials):
-                    algo.reset_history()
                     x0, y0 = problem.initial_point()
 
                     result = algo.optimize(
@@ -184,7 +184,7 @@ class ExperimentRunner:
         ax.set_ylabel(f'{METRIC_NAME_MAPPING[metric_to_plot]}', fontsize=12)
         ax.set_title(f'{problem_name}: Convergence', fontsize=14)
         ax.legend(fontsize=10)
-        ax.set_ylim(bottom=1e-6, top=40)
+        ax.set_ylim(bottom=1e-6)  #, top=40)
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
