@@ -89,7 +89,7 @@ class SaddlePointProblem(ABC):
         y0 = np.random.randn(self.dim_y)
         return x0, y0
 
-    def saddle_point_gap(self, x: np.ndarray, y: np.ndarray, obj_val: float = None) -> float:
+    def saddle_point_gap(self, x: np.ndarray, y: np.ndarray) -> float:
         """Compute duality gap or other measure of optimality"""
         return np.nan  # Override in subclass if needed
 
@@ -161,7 +161,7 @@ class MatrixGameProblem(SaddlePointProblem):
         y0 = np.ones(self.dim_y) / self.dim_y
         return self.project(x0, y0)
 
-    def saddle_point_gap(self, x: np.ndarray, y: np.ndarray, obj_val: float = None) -> float:
+    def saddle_point_gap(self, x: np.ndarray, y: np.ndarray) -> float:
         """Compute saddle point gap: max_y f(x,y) - min_x f(x,y)
 
         For matrix game f(x,y) = x^T M y on simplices:

@@ -152,14 +152,14 @@ class SaddlePointAlgorithm(ABC):
 
             x, y = x_new, y_new
 
-            obj_val = problem.objective(x, y)
             for metric, compute_metric in problem.metrics.items():
                 # Compute metrics available for this instance
-                value = compute_metric(x, y, obj_val)
+                value = compute_metric(x, y)
                 # Store history
                 self.history[metric].append(value)
 
             # Store history
+            obj_val = problem.objective(x, y)
             self.history['obj_value'].append(obj_val)
             self.history['iterate_x'].append(x.copy())
             self.history['iterate_y'].append(y.copy())
