@@ -3,6 +3,8 @@ from typing import Dict, Tuple
 import numpy as np
 import time
 
+from scipy._lib.cobyqa import problem
+
 from problems import SaddlePointProblem
 
 
@@ -96,6 +98,7 @@ class SaddlePointAlgorithm(ABC):
 
     def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray) -> None:
         """Algorithm-specific initialization"""
+        # TODO: make sure things that need to be reset for a new run are coded in this function
         pass
 
     @abstractmethod
@@ -430,6 +433,50 @@ class AGRAAL(SaddlePointAlgorithm):
         # Update z bar (auxiliary iterate)
         self.xbar = ((self.phi - 1) * x_new_proj + self.xbar) / self.phi
         self.ybar = ((self.phi - 1) * y_new_proj + self.ybar) / self.phi
+
+        return x_new_proj, y_new_proj
+
+
+class AdaPEG(SaddlePointAlgorithm):
+    """AdaPEG algorithm for unbounded domains, Ene and Nyugen, 2021"""
+
+    def __init__(self, step_size: float, eta: float):
+        super().__init__(f"AdaPEG", track_iterates='average')
+        self.gamma_prev = 0
+        self.gamma = 1 / step_size
+        self.eta = eta
+        self.step_size_aux = (self.eta * self.gamma) ** 2
+        self.xbar, self.ybar = None, None
+        self.x0, self.y0 = None, None
+        self.cached_xbar, self.cached_ybar = None, None
+
+    def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray):
+        self.xbar, self.ybar = x0, y0
+        self.x0, self.y0 = x0, y0
+
+    def step(self, x: np.ndarray, y: np.ndarray,
+             problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
+        # Compute momentum used for both steps
+        x_base = self.xbar + (1 - self.gamma_prev / self.gamma) * (self.x0 - self.xbar)
+        y_base = self.ybar + (1 - self.gamma_prev / self.gamma) * (self.y0 - self.ybar)
+
+        # Update iterate
+        gx, gy = self.cached_gx, self.cached_gy
+        x_new = x_base - 1 / self.gamma * gx
+        y_new = y_base + 1 / self.gamma * gy
+
+        x_new_proj, y_new_proj = problem.project(x_new, y_new)
+
+        # Update auxiliary iterate
+        gx_new, gy_new = problem.gradient(x_new_proj, y_new_proj)
+        self.xbar = x_base - 1 / self.gamma * gx_new
+        self.ybar = y_base - 1 / self.gamma * gy_new
+
+        # Update stepsize
+        self.gamma_prev = self.gamma
+        self.step_size_aux += (gx_new - gx) @ (y_new - gy) + (gy_new - gy) @ (gy_new - gy)
+        self.gamma = np.sqrt(self.step_size_aux) / self.eta
+        self.cached_gx, self.cached_gy = gx_new, gy_new
 
         return x_new_proj, y_new_proj
 
