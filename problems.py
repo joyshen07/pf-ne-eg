@@ -10,8 +10,12 @@ def project_simplex(v: np.ndarray) -> np.ndarray:
     n = len(v)
     u = np.sort(v)[::-1]
     cssv = np.cumsum(u)
-    rho = np.where(u * np.arange(1, n + 1) > (cssv - 1))[0][-1]
-    theta = (cssv[rho] - 1) / (rho + 1)
+    cond = u * np.arange(1, n + 1) > (cssv - 1)
+    if not np.any(cond):
+        theta = 0.0
+    else:
+        rho = np.where(cond)[0][-1]
+        theta = (cssv[rho] - 1) / (rho + 1)
     return np.maximum(v - theta, 0)
 
 
