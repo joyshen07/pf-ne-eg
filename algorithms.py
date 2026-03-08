@@ -384,55 +384,57 @@ class AGRAAL(SaddlePointAlgorithm):
     def __init__(self, step_size: float, phi: float, lmd_bar: float, ):
         super().__init__(f"aGRAAL", track_iterates='average')
         self.xbar, self.ybar = None, None
-        self.cached_xbar, self.cached_ybar = None, None
+        self.x_prev, self.y_prev = None, None
         self.step_size = min(step_size, lmd_bar)
         self.phi = min(phi, (np.sqrt(5) + 1) / 2)
         self.lmd_bar = lmd_bar
         self.theta = 1.
         self.rho = 1. / phi + 1. / phi ** 2
 
-    def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray):
+    def initialize(self, problem: SaddlePointProblem, x1: np.ndarray, y1: np.ndarray):
         # Initialize z bar and the gradient of initial points
-        self.xbar, self.ybar = x0, y0
-        self.cached_gx, self.cached_gy = problem.gradient(self.xbar, self.ybar)
+        self.xbar, self.ybar = x1, y1
+        self.x_prev, self.y_prev = x1, y1
+        self.cached_gx, self.cached_gy = problem.gradient(x1, y1)
 
         # Add a small perturbation to get local Lipschitz constant
         eps = 1e-3
-        x0, y0 = problem.project(self.xbar + eps * np.random.uniform(-1, 1),
-                                 self.ybar + eps * np.random.uniform(-1, 1))
+        x0, y0 = problem.project(x1 + eps * np.random.uniform(-1, 1),
+                                 y1 + eps * np.random.uniform(-1, 1))
         gx0, gy0 = problem.gradient(x0, y0)
-        L_local = compute_local_lip(self.xbar, self.ybar, x0, y0,
+        L_local = compute_local_lip(x1, y1, x0, y0,
                                     self.cached_gx, self.cached_gy, gx0, gy0)
         self.step_size = 1 / L_local
 
-        # Initialize stepsize
-        self.step_size = min(self.rho * self.step_size,
-                             self.phi * self.theta / 4 / self.step_size / L_local ** 2,
-                             self.lmd_bar)
-        self.theta = 1 / L_local / self.step_size * self.phi
-
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
-        # Prox step
-        gx, gy = self.cached_gx, self.cached_gy
+        # Compute gradient
+        gx, gy = problem.gradient(x, y)
+
+        # Update stepsize
+        L_local = compute_local_lip(x, y, self.x_prev, self.y_prev,
+                                    gx, gy, self.cached_gx, self.cached_gy)
+        with np.errstate(divide='ignore'):  # in case dividing by zero is encountered
+            step_size_new = min(
+                self.rho * self.step_size,
+                self.phi * self.theta / (4 * self.step_size * L_local ** 2),
+                self.lmd_bar
+            )
+        self.cached_gx, self.cached_gy = gx, gy
+
+        # Update auxiliary iterate
+        self.xbar = ((self.phi - 1) * x + self.xbar) / self.phi
+        self.ybar = ((self.phi - 1) * y + self.ybar) / self.phi
+
+        # Update iterate
         x_new = self.xbar - self.step_size * gx
         y_new = self.ybar + self.step_size * gy
 
         x_new_proj, y_new_proj = problem.project(x_new, y_new)
-        self.cached_gx, self.cached_gy = problem.gradient(x_new_proj, y_new_proj)
 
-        # Update stepsize
-        L_local = compute_local_lip(x, y, x_new_proj, y_new_proj,
-                                    gx, gy, self.cached_gx, self.cached_gy)
-        step_size_new = min(self.rho * self.step_size,
-                            self.phi * self.theta / 4 / self.step_size / L_local ** 2,
-                            self.lmd_bar)
+        # Update theta
         self.theta = step_size_new / self.step_size * self.phi
         self.step_size = step_size_new
-
-        # Update z bar (auxiliary iterate)
-        self.xbar = ((self.phi - 1) * x_new_proj + self.xbar) / self.phi
-        self.ybar = ((self.phi - 1) * y_new_proj + self.ybar) / self.phi
 
         return x_new_proj, y_new_proj
 
@@ -453,6 +455,7 @@ class AdaPEG(SaddlePointAlgorithm):
     def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray):
         self.xbar, self.ybar = x0, y0
         self.x0, self.y0 = x0, y0
+        self.cached_gx, self.cached_gy = problem.gradient(self.x0, self.y0)
 
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -476,6 +479,7 @@ class AdaPEG(SaddlePointAlgorithm):
         self.gamma_prev = self.gamma
         self.step_size_aux += (gx_new - gx) @ (y_new - gy) + (gy_new - gy) @ (gy_new - gy)
         self.gamma = np.sqrt(self.step_size_aux) / self.eta
+        self.step_size = 1 / self.gamma
         self.cached_gx, self.cached_gy = gx_new, gy_new
 
         return x_new_proj, y_new_proj
