@@ -166,6 +166,7 @@ class SaddlePointAlgorithm(ABC):
             self.history['time'].append(t1 - t0)  # incremental
 
             # Update and track AVERAGE iterate
+            # TODO: efficient implementation of average computation
             if self.track_average:
                 weight = 1.
                 if self.track_w_average:
@@ -176,14 +177,13 @@ class SaddlePointAlgorithm(ABC):
                 avg_x = sum_x / sum_weight
                 avg_y = sum_y / sum_weight
 
-                avg_obj_val = problem.objective(avg_x, avg_y)
-
                 for metric, compute_metric in problem.metrics.items():
                     # Compute metrics for average iterate
-                    value = compute_metric(avg_x, avg_y, avg_obj_val)
+                    value = compute_metric(avg_x, avg_y)
                     # Store history
                     self.history[f'avg_{metric}'].append(value)
 
+                avg_obj_val = problem.objective(avg_x, avg_y)
                 self.history['avg_obj_value'].append(avg_obj_val)
                 self.history['avg_x'].append(avg_x.copy())
                 self.history['avg_y'].append(avg_y.copy())
