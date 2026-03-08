@@ -466,7 +466,7 @@ class AdaPEG(SaddlePointAlgorithm):
         # Update auxiliary iterate
         gx_new, gy_new = problem.gradient(x_new_proj, y_new_proj)
         self.xbar = x_base - 1 / self.gamma * gx_new
-        self.ybar = y_base - 1 / self.gamma * gy_new
+        self.ybar = y_base + 1 / self.gamma * gy_new
 
         # Update stepsize
         self.gamma_prev = self.gamma
