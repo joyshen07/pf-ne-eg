@@ -3,8 +3,6 @@ from typing import Dict, Tuple
 import numpy as np
 import time
 
-from scipy._lib.cobyqa import problem
-
 from problems import SaddlePointProblem
 
 
@@ -96,6 +94,10 @@ class SaddlePointAlgorithm(ABC):
         if track_iterates in ['average', 'both']:
             self.track_average = True
 
+    def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray) -> None:
+        """Algorithm-specific initialization"""
+        pass
+
     @abstractmethod
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -124,6 +126,8 @@ class SaddlePointAlgorithm(ABC):
             problem.get_optimal_solution()
 
         # Initialize
+        self.initialize(problem, x0, y0)
+        self.reset_history()
         x, y = x0.copy(), y0.copy()
 
         # Initialize average iterates
@@ -372,20 +376,41 @@ class AdaProx(SaddlePointAlgorithm):
 
 class AGRAAL(SaddlePointAlgorithm):
     """aGRAAL (adaptive Golden Ratio Algorithm), Malitsky, 2018"""
+    # TODO: weighted average
 
     def __init__(self, step_size: float, phi: float, lmd_bar: float, ):
-        super().__init__(f"aGRAAL", track_iterates='avg')
+        super().__init__(f"aGRAAL", track_iterates='average')
         self.xbar, self.ybar = None, None
-        self.cached_xbar, self.cached_ybar = problem.gradient(self.xbar, self.ybar)  # need refractor
-        self.step_size = step_size
-        self.phi = phi
+        self.cached_xbar, self.cached_ybar = None, None
+        self.step_size = min(step_size, lmd_bar)
+        self.phi = min(phi, (np.sqrt(5) + 1) / 2)
         self.lmd_bar = lmd_bar
         self.theta = 1.
         self.rho = 1. / phi + 1. / phi ** 2
 
+    def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray):
+        # Initialize z bar and the gradient of initial points
+        self.xbar, self.ybar = x0, y0
+        self.cached_gx, self.cached_gy = problem.gradient(self.xbar, self.ybar)
+
+        # Add a small perturbation to get local Lipschitz constant
+        eps = 1e-3
+        x0, y0 = problem.project(self.xbar + eps * np.random.uniform(-1, 1),
+                                 self.ybar + eps * np.random.uniform(-1, 1))
+        gx0, gy0 = problem.gradient(x0, y0)
+        L_local = compute_local_lip(self.xbar, self.ybar, x0, y0,
+                                    self.cached_gx, self.cached_gy, gx0, gy0)
+        self.step_size = 1 / L_local
+
+        # Initialize stepsize
+        self.step_size = min(self.rho * self.step_size,
+                             self.phi * self.theta / 4 / self.step_size / L_local ** 2,
+                             self.lmd_bar)
+        self.theta = 1 / L_local / self.step_size * self.phi
+
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
-        # Prox
+        # Prox step
         gx, gy = self.cached_gx, self.cached_gy
         x_new = self.xbar - self.step_size * gx
         y_new = self.ybar + self.step_size * gy
