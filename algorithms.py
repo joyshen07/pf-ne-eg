@@ -372,7 +372,6 @@ class AdaProx(SaddlePointAlgorithm):
 
 class AGRAAL(SaddlePointAlgorithm):
     """aGRAAL (adaptive Golden Ratio Algorithm), Malitsky, 2018"""
-    # TODO: weighted average
 
     def __init__(self, step_size: float, phi: float, lmd_bar: float, ):
         super().__init__(f"aGRAAL", track_iterates='weighted')
@@ -470,7 +469,7 @@ class AdaPEG(SaddlePointAlgorithm):
 
         # Update stepsize
         self.gamma_prev = self.gamma
-        self.step_size_aux += (gx_new - gx) @ (y_new - gy) + (gy_new - gy) @ (gy_new - gy)
+        self.step_size_aux += (gx_new - gx) @ (gx_new - gx) + (gy_new - gy) @ (gy_new - gy)
         self.gamma = np.sqrt(self.step_size_aux) / self.eta
         self.step_size = 1 / self.gamma
         self.cached_gx, self.cached_gy = gx_new, gy_new
