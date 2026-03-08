@@ -90,11 +90,13 @@ class SaddlePointAlgorithm(ABC):
         self.step_size = None
 
         # Whether to track last or average iterates
-        self.track_last, self.track_average = False, False
+        self.track_last, self.track_average, self.track_w_average = False, False, False
         if track_iterates in ['last', 'both']:
             self.track_last = True
-        if track_iterates in ['average', 'both']:
+        if track_iterates in ['average', 'both', 'weighted']:
             self.track_average = True
+        if track_iterates == 'weighted':
+            self.track_w_average = True
 
     def initialize(self, problem: SaddlePointProblem, x0: np.ndarray, y0: np.ndarray) -> None:
         """Algorithm-specific initialization"""
@@ -137,6 +139,7 @@ class SaddlePointAlgorithm(ABC):
         if self.track_average:
             sum_x = np.zeros_like(x)
             sum_y = np.zeros_like(y)
+            sum_weight = 0
 
         for i in range(max_iter):
 
@@ -162,10 +165,14 @@ class SaddlePointAlgorithm(ABC):
 
             # Update and track AVERAGE iterate
             if self.track_average:
-                sum_x += x
-                sum_y += y
-                avg_x = sum_x / (i + 1)
-                avg_y = sum_y / (i + 1)
+                weight = 1.
+                if self.track_w_average:
+                    weight = self.step_size
+                sum_x += x * weight
+                sum_y += y * weight
+                sum_weight += weight
+                avg_x = sum_x / sum_weight
+                avg_y = sum_y / sum_weight
 
                 avg_obj_val = problem.objective(avg_x, avg_y)
 
@@ -368,7 +375,7 @@ class AGRAAL(SaddlePointAlgorithm):
     # TODO: weighted average
 
     def __init__(self, step_size: float, phi: float, lmd_bar: float, ):
-        super().__init__(f"aGRAAL", track_iterates='average')
+        super().__init__(f"aGRAAL", track_iterates='weighted')
         self.xbar, self.ybar = None, None
         self.x_prev, self.y_prev = None, None
         self.step_size = min(step_size, lmd_bar)
