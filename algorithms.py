@@ -3,6 +3,8 @@ from typing import Dict, Tuple
 import numpy as np
 import time
 
+from scipy._lib.cobyqa import problem
+
 from problems import SaddlePointProblem
 
 
@@ -263,6 +265,43 @@ class Extragradient(SaddlePointAlgorithm):
         return x_new_proj, y_new_proj
 
 
+class UniversalMirrorProx(SaddlePointAlgorithm):
+    """Universal Mirror Prox."""
+
+    def __init__(self, diameter: float, G0: float):
+        super().__init__(f"Universal MP", track_iterates='average')
+        self.diameter = diameter
+        self.G0 = G0
+        self.step_size_aux = self.G0 ** 2
+        self.step_size = self.diameter / self.G0
+
+    def step(self, x: np.ndarray, y: np.ndarray,
+             problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
+        # Extrapolation step
+        gx, gy = problem.gradient(x, y)
+        self.cached_gx, self.cached_gy = gx, gy
+        x_tilde = x - self.step_size * gx
+        y_tilde = y + self.step_size * gy
+
+        x_tilde, y_tilde = problem.project(x_tilde, y_tilde)
+
+        # Correction step using gradient at extrapolated point
+        gx_tilde, gy_tilde = problem.gradient(x_tilde, y_tilde)
+        x_new = x - self.step_size * gx_tilde
+        y_new = y + self.step_size * gy_tilde
+
+        x_new_proj, y_new_proj = problem.project(x_new, y_new)
+
+        # Update stepsize
+        delta = np.sum((x_tilde - x) ** 2) + np.sum((y_tilde - y) ** 2) \
+            + np.sum((x_new_proj - x_tilde) ** 2) + np.sum((y_new_proj - y_tilde) ** 2)
+        delta = delta / 5 / self.step_size ** 2
+        self.step_size_aux += delta
+        self.step_size = self.diameter / np.sqrt(self.step_size_aux)
+
+        return x_new_proj, y_new_proj
+
+
 class AdaptiveMirrorProx(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
@@ -299,39 +338,6 @@ class AdaptiveMirrorProx(SaddlePointAlgorithm):
         return x_new_proj, y_new_proj
 
 
-class AdaptExtragradient(SaddlePointAlgorithm):
-    """Extragradient method with adaptive stepsize."""
-
-    def __init__(self, step_size: float, theta: float = 0.9):
-        super().__init__(f"Adapt EG (stepsize0={step_size:.3f})", track_iterates='last')
-        self.step_size = step_size
-        self.step_size_aux = self.step_size  # 1 / self.step_size ** 2
-
-    def step(self, x: np.ndarray, y: np.ndarray,
-             problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
-        # Extrapolation step
-        gx, gy = problem.gradient(x, y)
-        self.cached_gx, self.cached_gy = gx, gy
-        x_tilde = x - self.step_size * gx
-        y_tilde = y + self.step_size * gy
-
-        x_tilde, y_tilde = problem.project(x_tilde, y_tilde)
-
-        # Correction step using gradient at extrapolated point
-        gx_tilde, gy_tilde = problem.gradient(x_tilde, y_tilde)
-        x_new = x - self.step_size * gx_tilde
-        y_new = y + self.step_size * gy_tilde
-
-        x_new_proj, y_new_proj = problem.project(x_new, y_new)
-
-        # Update step size
-        self.step_size_aux += (iteration + 1) * ((x_new_proj - x_tilde) @ (x_new_proj - x_tilde) +
-                                                 (y_new_proj - y_tilde) @ (y_new_proj - y_tilde))
-        self.step_size = 1 / np.sqrt(self.step_size_aux)
-
-        return x_new_proj, y_new_proj
-
-
 class AdaProx(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize 2."""
 
@@ -364,15 +370,52 @@ class AdaProx(SaddlePointAlgorithm):
         return x_new_proj, y_new_proj
 
 
-class UniversalMirrorProx(SaddlePointAlgorithm):
-    """Universal Mirror Prox."""
+class AGRAAL(SaddlePointAlgorithm):
+    """aGRAAL (adaptive Golden Ratio Algorithm), Malitsky, 2018"""
 
-    def __init__(self, diameter: float, G0: float):
-        super().__init__(f"Universal MP", track_iterates='average')
-        self.diameter = diameter
-        self.G0 = G0
-        self.step_size_aux = self.G0 ** 2
-        self.step_size = self.diameter / self.G0
+    def __init__(self, step_size: float, phi: float, lmd_bar: float, ):
+        super().__init__(f"aGRAAL", track_iterates='avg')
+        self.xbar, self.ybar = None, None
+        self.cached_xbar, self.cached_ybar = problem.gradient(self.xbar, self.ybar)  # need refractor
+        self.step_size = step_size
+        self.phi = phi
+        self.lmd_bar = lmd_bar
+        self.theta = 1.
+        self.rho = 1. / phi + 1. / phi ** 2
+
+    def step(self, x: np.ndarray, y: np.ndarray,
+             problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
+        # Prox
+        gx, gy = self.cached_gx, self.cached_gy
+        x_new = self.xbar - self.step_size * gx
+        y_new = self.ybar + self.step_size * gy
+
+        x_new_proj, y_new_proj = problem.project(x_new, y_new)
+        self.cached_gx, self.cached_gy = problem.gradient(x_new_proj, y_new_proj)
+
+        # Update stepsize
+        L_local = compute_local_lip(x, y, x_new_proj, y_new_proj,
+                                    gx, gy, self.cached_gx, self.cached_gy)
+        step_size_new = min(self.rho * self.step_size,
+                            self.phi * self.theta / 4 / self.step_size / L_local ** 2,
+                            self.lmd_bar)
+        self.theta = step_size_new / self.step_size * self.phi
+        self.step_size = step_size_new
+
+        # Update z bar (auxiliary iterate)
+        self.xbar = ((self.phi - 1) * x_new_proj + self.xbar) / self.phi
+        self.ybar = ((self.phi - 1) * y_new_proj + self.ybar) / self.phi
+
+        return x_new_proj, y_new_proj
+
+
+class AdaptExtragradient(SaddlePointAlgorithm):
+    """Extragradient method with adaptive stepsize."""
+
+    def __init__(self, step_size: float, theta: float = 0.9):
+        super().__init__(f"Adapt EG (stepsize0={step_size:.3f})", track_iterates='last')
+        self.step_size = step_size
+        self.step_size_aux = self.step_size  # 1 / self.step_size ** 2
 
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -391,12 +434,10 @@ class UniversalMirrorProx(SaddlePointAlgorithm):
 
         x_new_proj, y_new_proj = problem.project(x_new, y_new)
 
-        # Update stepsize
-        delta = np.sum((x_tilde - x) ** 2) + np.sum((y_tilde - y) ** 2) \
-            + np.sum((x_new_proj - x_tilde) ** 2) + np.sum((y_new_proj - y_tilde) ** 2)
-        delta = delta / 5 / self.step_size ** 2
-        self.step_size_aux += delta
-        self.step_size = self.diameter / np.sqrt(self.step_size_aux)
+        # Update step size
+        self.step_size_aux += (iteration + 1) * ((x_new_proj - x_tilde) @ (x_new_proj - x_tilde) +
+                                                 (y_new_proj - y_tilde) @ (y_new_proj - y_tilde))
+        self.step_size = 1 / np.sqrt(self.step_size_aux)
 
         return x_new_proj, y_new_proj
 
