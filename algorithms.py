@@ -145,9 +145,6 @@ class SaddlePointAlgorithm(ABC):
             x_new, y_new = self.step(x, y, problem, i)
             t1 = time.perf_counter()
 
-            # # Compute natural residual for the previous iteration
-            # nat_residual = problem.natural_residual(x, y, self.step_size, self.cached_gx, self.cached_gy)
-
             x, y = x_new, y_new
 
             obj_val = problem.objective(x, y)
@@ -156,17 +153,6 @@ class SaddlePointAlgorithm(ABC):
                 value = compute_metric(x, y, obj_val)
                 # Store history
                 self.history[metric].append(value)
-
-            # # Compute relaxation lower bound via linear underestimate
-            # if 'lb_diff' in problem.metrics:
-            #     lb = problem.lower_bound(x, y, obj_val)
-            #     self.history['lbs'].append(lb)
-            # # Compute saddle point gap
-            # if 'sp_gap' in problem.metrics:
-            #     sp_gap = problem.saddle_point_gap(x, y)
-            # # Compute distance to optimal solution
-            # if 'dist_to_opt' in problem.metrics:
-            #     dist_to_opt = problem.dist_to_opt(x, y)
 
             # Store history
             self.history['obj_value'].append(obj_val)
@@ -389,7 +375,7 @@ class AGRAAL(SaddlePointAlgorithm):
         self.phi = min(phi, (np.sqrt(5) + 1) / 2)
         self.lmd_bar = lmd_bar
         self.theta = 1.
-        self.rho = 1. / phi + 1. / phi ** 2
+        self.rho = 1. / self.phi + 1. / self.phi ** 2
 
     def initialize(self, problem: SaddlePointProblem, x1: np.ndarray, y1: np.ndarray):
         # Initialize z bar and the gradient of initial points
