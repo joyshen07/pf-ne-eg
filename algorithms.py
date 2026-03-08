@@ -386,19 +386,24 @@ class AGRAAL(SaddlePointAlgorithm):
         self.rho = 1. / self.phi + 1. / self.phi ** 2
 
     def initialize(self, problem: SaddlePointProblem, x1: np.ndarray, y1: np.ndarray):
-        # Initialize z bar and the gradient of initial points
+        # Initialize z bar and compute its gradient
         self.xbar, self.ybar = x1, y1
-        self.x_prev, self.y_prev = x1, y1
-        self.cached_gx, self.cached_gy = problem.gradient(x1, y1)
+        gx1, gy1 = problem.gradient(x1, y1)
 
-        # Add a small perturbation to get local Lipschitz constant
+        # Add a small perturbation to generate x0, y0
         eps = 1e-3
         x0, y0 = problem.project(x1 + eps * np.random.uniform(-1, 1),
                                  y1 + eps * np.random.uniform(-1, 1))
         gx0, gy0 = problem.gradient(x0, y0)
+
+        # Compute local Lipschitz constant for initial stepsize
         L_local = compute_local_lip(x1, y1, x0, y0,
-                                    self.cached_gx, self.cached_gy, gx0, gy0)
+                                    gx1, gy1, gx0, gy0)
         self.step_size = 1 / L_local
+
+        # Initialize z0
+        self.x_prev, self.y_prev = x0, y0
+        self.cached_gx, self.cached_gy = gx0, gy0
 
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -408,13 +413,15 @@ class AGRAAL(SaddlePointAlgorithm):
         # Update stepsize
         L_local = compute_local_lip(x, y, self.x_prev, self.y_prev,
                                     gx, gy, self.cached_gx, self.cached_gy)
-        with np.errstate(divide='ignore'):  # in case dividing by zero is encountered
-            step_size_new = min(
-                self.rho * self.step_size,
-                self.phi * self.theta / (4 * self.step_size * L_local ** 2),
-                self.lmd_bar
-            )
+        step_size_new = min(
+            self.rho * self.step_size,
+            self.phi * self.theta / (4 * self.step_size * L_local ** 2),
+            self.lmd_bar
+        )
         self.cached_gx, self.cached_gy = gx, gy
+
+        # Update x_prev, y_prev
+        self.x_prev, self.y_prev = x, y
 
         # Update auxiliary iterate
         self.xbar = ((self.phi - 1) * x + self.xbar) / self.phi
