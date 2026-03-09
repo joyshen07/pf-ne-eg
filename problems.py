@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 import scipy
 import pickle
+from sklearn.datasets import make_classification
 
 
 def project_simplex(v: np.ndarray) -> np.ndarray:
@@ -275,6 +276,119 @@ class LASSO(SaddlePointProblem):
         x0 = np.zeros(self.dim_x)
         y0 = np.zeros(self.dim_y)
         return self.project(x0, y0)
+
+
+class GroupFairnessClassification(SaddlePointProblem):
+    """Group fairness classification problem"""
+
+    def __init__(self, X: np.ndarray = None, y: np.ndarray = None, lmd: float = 0,
+                 n_groups: int = 100, n_samples_per_group: int = 100, n_features: int = 10):
+        """Initialize matrix game problem
+
+        Args:
+        """
+        self.X = X
+        self.y = y
+        self.reg_lambda = lmd
+        self.n_groups = n_groups
+        self.n_samples_per_group = n_samples_per_group
+        self.n_features = n_features
+        dim_q = self.n_groups * self.n_samples_per_group
+        dim_theta = self.n_features
+        super().__init__(dim_q, dim_theta)
+
+    def _setup(self):
+        """
+        Generates a synthetic dataset for minimax fairness testing
+        """
+        group_features = []
+        group_labels = []
+
+        for i in range(self.n_groups):
+            # We vary the difficulty and class balance for each group
+            # Group 0 might be easy (linearly separable),
+            # while Group 2 might be noisy and imbalanced.
+            X, y = make_classification(
+                n_samples=self.n_samples_per_group,
+                n_features=self.n_features - 1,
+                n_informative=self.n_features - 3,
+                n_redundant=2,
+                flip_y=0.1 * (i ** 2) / self.n_groups ** 2,  # Escalating label noise
+                weights=[0.5 + (0.1 * i), 0.5 - (0.1 * i)],  # Shifting class balance
+                random_state=self.seed + i
+            )
+
+            # Add a bias term (column of 1s) if you want the model to have an intercept
+            X_with_bias = np.hstack([X, np.ones((X.shape[0], 1))])
+
+            group_features.append(X_with_bias)
+            group_labels.append(y.reshape(-1))
+
+        self.X, self.y = group_features, group_labels
+
+    def project(self, theta: np.ndarray, q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Project onto probability simplices"""
+        return theta, project_simplex(q)
+
+    def objective(self, theta: np.ndarray, q: np.ndarray) -> float:
+        # Compute individual group losses
+        losses = np.zeros(self.n_groups)
+        for i in range(self.n_groups):
+            # Using y in {-1, 1} for the classic logistic form
+            # L = mean(log(1 + exp(-y * X * theta)))
+            y_raw = 2 * self.y[i] - 1  # Convert {0, 1} to {-1, 1}
+            margins = y_raw * (self.X[i] @ theta)
+            # log(1 + exp(-x)) is stable via:
+            losses[i] = np.mean(np.logaddexp(0, -margins))
+
+        # Compute total objective
+        # Phi(theta, q) = sum(q_i * L_i) + reg
+        weighted_loss = np.sum(q.flatten() * losses)
+        reg_term = 0.5 * self.reg_lambda * np.sum(theta**2)
+        objective = weighted_loss + reg_term
+
+        return objective
+
+    def grad_x(self, theta: np.ndarray, q: np.ndarray) -> np.ndarray:
+        # Individual group gradients
+        grads_per_group = []
+
+        for i in range(self.n_groups):
+            y_raw = 2 * self.y[i] - 1
+            z = y_raw * (self.X[i] @ theta)
+            # Gradient of log(1+exp(-z)) is -1 / (1 + exp(z))
+            p_weights = -y_raw / (1 + np.exp(z))
+            grad_per_group = (self.X[i].T @ p_weights) / len(self.y[i])
+            grads_per_group.append(grad_per_group)
+
+        # Gradient wrt theta
+        # Weighted average of group gradients + reg
+        grad_theta = np.zeros_like(theta)
+        for i in range(self.n_groups):
+            grad_theta += q[i] * grads_per_group[i]
+        grad_theta += self.reg_lambda * theta
+
+        return grad_theta
+
+    def grad_y(self, theta: np.ndarray, q: np.ndarray) -> np.ndarray:
+        # Compute individual group losses
+        losses = np.zeros(self.n_groups)
+        for i in range(self.n_groups):
+            # Using y in {-1, 1} for the classic logistic form
+            # L = mean(log(1 + exp(-y * X * theta)))
+            y_raw = 2 * self.y[i] - 1  # Convert {0, 1} to {-1, 1}
+            margins = y_raw * (self.X[i] @ theta)
+            # log(1 + exp(-x)) is stable via:
+            losses[i] = np.mean(np.logaddexp(0, -margins))
+        # Gradient wrt q
+        # Partial wrt q_i is just L_i
+        return losses.reshape(-1)
+
+    def initial_point(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Start with uniform distribution"""
+        theta0 = np.ones(self.n_features) / self.n_features
+        q0 = np.zeros(self.n_groups)
+        return self.project(theta0, q0)
 
 
 class MESP(SaddlePointProblem):
