@@ -198,7 +198,7 @@ class Bilinear(SaddlePointProblem):
         super().__init__(dim_x, dim_y, seed)
 
     def _setup(self):
-        self.M = generate_sparse_matrix(self.dim_x, self.sparsity, self.seed)
+        self.M = np.random.randn(self.dim_x, self.dim_y)
 
     def project(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Project onto probability simplices"""
@@ -516,7 +516,7 @@ class GammaStar(MESP):
         y0 = np.array([.5, .5])
         return x0, y0
 
-    def saddle_point_gap(self, x: np.ndarray, alpha: np.ndarray, obj_val: float = None) -> float:
+    def saddle_point_gap(self, x: np.ndarray, alpha: np.ndarray) -> float:
         """Approximate saddle point gap"""
 
         # Compute objectives and gradients once

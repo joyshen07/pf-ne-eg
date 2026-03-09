@@ -443,7 +443,7 @@ class AGRAAL(SaddlePointAlgorithm):
 class AdaPEG(SaddlePointAlgorithm):
     """AdaPEG algorithm for unbounded domains, Ene and Nyugen, 2021"""
 
-    def __init__(self, step_size: float, eta: float):
+    def __init__(self, step_size: float, eta: float = 1.):
         super().__init__(f"AdaPEG", track_iterates='average')
         self.gamma_prev = 0
         self.gamma = 1 / step_size
@@ -460,6 +460,8 @@ class AdaPEG(SaddlePointAlgorithm):
 
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
+        """AdaPEG Update: A weighted average of the previous iterate and the anchor (x0),
+        followed by an adaptive gradient-style step using the operator at w"""
         # Compute momentum used for both steps
         x_base = self.xbar + (1 - self.gamma_prev / self.gamma) * (self.x0 - self.xbar)
         y_base = self.ybar + (1 - self.gamma_prev / self.gamma) * (self.y0 - self.ybar)
