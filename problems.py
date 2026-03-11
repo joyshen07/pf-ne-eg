@@ -282,7 +282,7 @@ class GroupFairnessClassification(SaddlePointProblem):
     """Group fairness classification problem"""
 
     def __init__(self, X: np.ndarray = None, y: np.ndarray = None, lmd: float = 0,
-                 n_groups: int = 100, n_samples_per_group: int = 100, n_features: int = 10):
+                 n_groups: int = 5, n_samples_per_group: int = 100, n_features: int = 100):
         """Initialize matrix game problem
 
         Args:

@@ -11,6 +11,7 @@ from problems import SaddlePointProblem
 from algorithms import SaddlePointAlgorithm
 
 
+# TODO: distinguish server (no interactive plot) and pc/mac
 is_on_server = False
 try:
     # # Attempt interactive plotting
@@ -21,6 +22,7 @@ except ModuleNotFoundError:
     is_on_server = True
 
 
+# TODO: wrap metric names, functions etc into a class
 METRIC_NAME_MAPPING = {
     'sp_gap': 'Saddle-point gap',
     'dist_to_opt': 'Distance to proxy optimal solution',
@@ -146,7 +148,7 @@ class ExperimentRunner:
 
             variants = []
             if track_last:
-                variants.append(("last", metric_to_plot, '-', 1.0))
+                variants.append(("last", metric_to_plot, '-', 0.7))
             if track_average:
                 variants.append(("avg", f"avg_{metric_to_plot}", '--', 0.7))
 
