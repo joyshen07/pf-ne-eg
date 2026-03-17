@@ -562,7 +562,8 @@ class PfNeEg(SaddlePointAlgorithm):
         # Update stepsize
         L_local = compute_local_lip(x, y, x_tilde, y_tilde,
                                     gx, gy, gx_tilde, gy_tilde)
-        self.step_size = min(self.step_size, self.theta / L_local)
+        mult = 1 + 1 / np.log(iteration + 2)
+        self.step_size = min(self.step_size * mult, self.theta / L_local)
 
         # Store current state for next iteration
         self.prev_x_tilde = x_tilde.copy()
@@ -586,7 +587,7 @@ class PfNeEgBacktracking(SaddlePointAlgorithm):
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
 
-        step_size = self.step_size
+        step_size = self.step_size / self.mult
 
         for backtrack_iter in range(self.max_backtracks):
 
