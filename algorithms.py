@@ -494,7 +494,7 @@ class AdaptExtragradient(SaddlePointAlgorithm):
     def __init__(self, step_size: float, theta: float = 0.9):
         super().__init__(f"Adapt EG (stepsize0={step_size:.3f})", track_iterates='last')
         self.step_size = step_size
-        self.step_size_aux = self.step_size  # 1 / self.step_size ** 2
+        self.step_size_aux = 1 / self.step_size ** 2
 
     def step(self, x: np.ndarray, y: np.ndarray,
              problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
