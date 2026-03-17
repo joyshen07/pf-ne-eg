@@ -224,8 +224,7 @@ class SPMirrorDescent(SaddlePointAlgorithm):
     """Simultaneous gradient descent-ascent"""
 
     def __init__(self, lipschitz: float, diameter: float, max_iter: int):
-        super().__init__(f"SPMD (stepsize={1 / lipschitz * diameter / np.sqrt(max_iter):.4f})",
-                         track_iterates='average')
+        super().__init__(f"SPMD", track_iterates='average')
         self.step_size = 1 / lipschitz * diameter / np.sqrt(max_iter)
 
     def step(self, x: np.ndarray, y: np.ndarray,
@@ -244,7 +243,7 @@ class Extragradient(SaddlePointAlgorithm):
     """Extragradient method (Korpelevich, 1976)"""
 
     def __init__(self, lipschitz: float):
-        super().__init__(f"EG (stepsize={1 / lipschitz:.3f})", track_iterates='both')
+        super().__init__(f"EG", track_iterates='both')
         self.step_size = 1 / lipschitz
 
     def step(self, x: np.ndarray, y: np.ndarray,
@@ -308,7 +307,7 @@ class AdaptiveMirrorProx(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
     def __init__(self, step_size: float, theta: float = 0.9):
-        super().__init__(f"Adaptive MP (stepsize0={step_size:.3f})", track_iterates='average')
+        super().__init__(f"Adaptive MP", track_iterates='average')
         self.step_size = step_size
         self.theta = theta
 
@@ -344,7 +343,7 @@ class AdaProx(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize 2."""
 
     def __init__(self, step_size: float):
-        super().__init__(f"AdaProx (stepsize0={step_size:.3f})", track_iterates='average')
+        super().__init__(f"AdaProx", track_iterates='average')
         self.step_size = step_size
         self.step_size_aux = 1
 
@@ -492,7 +491,7 @@ class AdaptExtragradient(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
     def __init__(self, step_size: float, theta: float = 0.9):
-        super().__init__(f"Adapt EG (stepsize0={step_size:.3f})", track_iterates='last')
+        super().__init__(f"Adapt EG", track_iterates='last')
         self.step_size = step_size
         self.step_size_aux = 1 / self.step_size ** 2
 
@@ -525,7 +524,7 @@ class PfNeEg(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
     def __init__(self, step_size: float = 0.5, theta: float = 0.9):
-        super().__init__(f"PF-NE-EG (stepsize0={step_size:.3f})", track_iterates='last')
+        super().__init__(f"PF-NE-EG", track_iterates='last')
         self.step_size = step_size
         self.theta = theta
         self.prev_x_tilde = None
@@ -578,7 +577,7 @@ class PfNeEgBacktracking(SaddlePointAlgorithm):
     """Extragradient method with backtracking linesearch stepsize."""
 
     def __init__(self, step_size: float = 0.5, mult: float = 0.9, theta: float = 0.9):
-        super().__init__(f"PF-NE-EG backtracking (stepsize0={step_size:.3f})", track_iterates='last')
+        super().__init__(f"PF-NE-EG bt", track_iterates='last')
         self.step_size = step_size
         self.mult = mult
         self.theta = theta

@@ -2,13 +2,17 @@ from dataclasses import dataclass
 from typing import Dict, List
 import numpy as np
 import copy
-import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-import re
 
 from problems import SaddlePointProblem
 from algorithms import SaddlePointAlgorithm
+
+
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'figure.figsize': (5, 4)
+})
 
 
 # TODO: distinguish server (no interactive plot) and pc/mac
@@ -20,6 +24,9 @@ try:
 except ModuleNotFoundError:
     # Fallback for servers
     is_on_server = True
+# is_on_server = True
+save_fig = True
+show_legend = False
 
 
 # TODO: wrap metric names, functions etc into a class
@@ -29,16 +36,17 @@ METRIC_NAME_MAPPING = {
     'lb_diff': r'lower bound $-$ best lower bound',
     'nat_res': r'natural residual'
 }
-
-
-def rename_algo_name(s):
-    # before, _, after = s.partition("(")     # split at first "("
-    # after = after.partition(")")[2]         # drop up to the first ")"
-    # return before + after
-
-    # Remove the " (stepsize = ...)" part
-    return re.sub(r" \(stepsize0?\s*=\s*[^)]+\)", "", s)
-
+ALGO_COLOR_MAPPING = {
+    'EG': 'tab:blue',
+    'PF-NE-EG': 'tab:orange',
+    'PF-NE-EG bt': 'tab:red',
+    'Adapt EG': 'tab:green',
+    'Universal MP': 'tab:gray',
+    'Adaptive MP': 'tab:pink',
+    'AdaProx': 'tab:olive',
+    'aGRAAL': 'tab:purple',
+    'AdaPEG': 'tab:cyan',
+}
 
 @dataclass
 class ExperimentConfig:
@@ -129,12 +137,9 @@ class ExperimentRunner:
             return
 
         # Single plot for saddle point gap
-        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        fig, ax = plt.subplots(1, 1)
 
         for algo_name_label, trials in self.results[problem_name].items():
-
-            # remove the stepsize in algorithm name
-            algo_name_label = rename_algo_name(algo_name_label)
 
             # Get plot preference from first trial's algorithm
             # (all trials use same algorithm instance settings)
@@ -179,24 +184,27 @@ class ExperimentRunner:
                 plot = ax.loglog if use_log else ax.plot
                 last_avg = 'avg' if metric.startswith('avg_') else 'last'
                 plot(iters, mean_convergence, label=f"{algo_name_label} ({last_avg})",
-                     linewidth=2, alpha=alpha, linestyle=linestyle)
+                     linewidth=2, alpha=alpha, linestyle=linestyle, color=ALGO_COLOR_MAPPING[algo_name_label])
 
         # Configure plot
         ax.set_xlabel('Iteration', fontsize=12)
         ax.set_ylabel(f'{METRIC_NAME_MAPPING[metric_to_plot]}', fontsize=12)
-        ax.set_title(f'{problem_name}: Convergence', fontsize=14)
-        ax.legend(fontsize=10)
+        ax.set_title(f'{problem_name}', fontsize=14)
+        if show_legend:
+            legend = ax.legend(fontsize=10)
+            # legend.set_zorder(1)
+            legend.get_frame().set_alpha(0.5)
         ax.set_ylim(bottom=1e-6)  #, top=40)
         ax.grid(True, alpha=0.3)
 
-        plt.tight_layout()
+        fig.tight_layout()
 
         # Save or show
         if not is_on_server:
-            plt.show()
-        else:
+            fig.show()
+        if save_fig:
             filepath = f'{self.config.save_path}/{problem_name}.pdf'
-            plt.savefig(filepath, bbox_inches='tight')
+            fig.savefig(filepath, bbox_inches='tight')
             print(f"Figure saved to: {filepath}")
             plt.close(fig)  # Close to free memory
 
@@ -223,7 +231,6 @@ class ExperimentRunner:
         latex_lines.append(r"\midrule")
 
         for algo_name, time_val in algo_times.items():
-            algo_name = rename_algo_name(algo_name)
             latex_lines.append(f"{algo_name} & {time_val:.2f} \\\\")
 
         latex_lines.append(r"\bottomrule")
