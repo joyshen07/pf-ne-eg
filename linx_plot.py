@@ -3,6 +3,13 @@ import pickle
 import matplotlib.pyplot as plt
 
 from problems import LinxDoubleScaling
+from experiments import ALGO_COLOR_MAPPING
+
+
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'figure.figsize': (5, 4)
+})
 
 
 if __name__ == '__main__':
@@ -50,8 +57,8 @@ if __name__ == '__main__':
                         hit_records[algo_name_label]['time'].append(hit_time)
                         hit_records[algo_name_label]['size'].append(s)
 
-        fig1, ax1 = plt.subplots(figsize=(7, 5))
-        fig2, ax2 = plt.subplots(figsize=(7, 5))
+        fig1, ax1 = plt.subplots()
+        fig2, ax2 = plt.subplots()
 
         for algo_name_label, hit_record in hit_records.items():
 
@@ -69,21 +76,25 @@ if __name__ == '__main__':
                 linestyle = '-'
                 alpha = 1.0
 
-            ax1.plot(sizes, iters, marker=marker, label=algo_name_label, linestyle=linestyle, alpha=alpha)
-            ax2.plot(sizes, times, marker=marker, label=algo_name_label, linestyle=linestyle, alpha=alpha)
+            algo_name = algo_name_label.split(' (')[0]
+
+            ax1.plot(sizes, iters, marker=marker, label=algo_name_label,
+                     linestyle=linestyle, alpha=alpha, color=ALGO_COLOR_MAPPING[algo_name])
+            ax2.plot(sizes, times, marker=marker, label=algo_name_label,
+                     linestyle=linestyle, alpha=alpha, color=ALGO_COLOR_MAPPING[algo_name])
 
         ax1.set_xlabel(r"Subset size $s$", fontsize=12)
         ax1.set_ylabel(r"Iterations to reach $\epsilon$", fontsize=12)
         ax1.set_title(rf"$\epsilon = {tol}$", fontsize=12)
         ax1.grid(True, alpha=0.3)
-        # only add legend once
-        ax1.legend() if tol == 1e-1 else None
         fig1.tight_layout()
 
         ax2.set_xlabel(r"Instance size $s$", fontsize=12)
         ax2.set_ylabel(r"Time to reach $\epsilon$", fontsize=12)
         ax2.set_title(rf"$\epsilon = {tol}$", fontsize=12)
         ax2.grid(True, alpha=0.3)
+        # only add legend once
+        ax2.legend() if tol == 1e-1 else None
         # ax2.legend()
         fig2.tight_layout()
 
