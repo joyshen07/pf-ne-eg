@@ -293,7 +293,7 @@ class GroupFairnessClassification(SaddlePointProblem):
         self.n_groups = n_groups
         self.n_samples_per_group = n_samples_per_group
         self.n_features = n_features
-        dim_q = self.n_groups * self.n_samples_per_group
+        dim_q = self.n_groups
         dim_theta = self.n_features
         super().__init__(dim_q, dim_theta)
 
