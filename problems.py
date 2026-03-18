@@ -389,8 +389,8 @@ class GroupFairnessClassification(SaddlePointProblem):
 
     def initial_point(self) -> Tuple[np.ndarray, np.ndarray]:
         """Start with uniform distribution"""
-        theta0 = np.ones(self.n_features) / self.n_features
-        q0 = np.zeros(self.n_groups)
+        theta0 = np.zeros(self.n_features)
+        q0 = np.ones(self.n_groups) / self.n_groups
         return self.project(theta0, q0)
 
 
