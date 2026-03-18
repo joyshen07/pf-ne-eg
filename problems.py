@@ -340,6 +340,7 @@ class GroupFairnessClassification(SaddlePointProblem):
             margins = y_raw * (self.X[i] @ theta)
             # log(1 + exp(-x)) is stable via:
             losses[i] = np.mean(np.logaddexp(0, -margins))
+            # losses[i] = np.mean(np.exp(-margins))
 
         # Compute total objective
         # Phi(theta, q) = sum(q_i * L_i) + reg
@@ -358,6 +359,7 @@ class GroupFairnessClassification(SaddlePointProblem):
             z = y_raw * (self.X[i] @ theta)
             # Gradient of log(1+exp(-z)) is -1 / (1 + exp(z))
             p_weights = -y_raw / (1 + np.exp(z))
+            # p_weights = -y_raw * np.exp(-z)  # exponential loss
             grad_per_group = (self.X[i].T @ p_weights) / len(self.y[i])
             grads_per_group.append(grad_per_group)
 
@@ -380,6 +382,7 @@ class GroupFairnessClassification(SaddlePointProblem):
             margins = y_raw * (self.X[i] @ theta)
             # log(1 + exp(-x)) is stable via:
             losses[i] = np.mean(np.logaddexp(0, -margins))
+            # losses[i] = np.mean(np.exp(-margins))
         # Gradient wrt q
         # Partial wrt q_i is just L_i
         return losses.reshape(-1)
