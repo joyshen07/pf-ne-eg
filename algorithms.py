@@ -3,8 +3,6 @@ from typing import Dict, Tuple
 import numpy as np
 import time
 
-from scipy._lib.cobyqa import problem
-
 from problems import SaddlePointProblem
 
 
@@ -490,7 +488,7 @@ class AdaPEG(SaddlePointAlgorithm):
 class AdaptExtragradient(SaddlePointAlgorithm):
     """Extragradient method with adaptive stepsize."""
 
-    def __init__(self, step_size: float, theta: float = 0.9):
+    def __init__(self, step_size: float):
         super().__init__(f"Adapt EG", track_iterates='last')
         self.step_size = step_size
         self.step_size_aux = 1 / self.step_size ** 2
