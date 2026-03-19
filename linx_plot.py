@@ -63,7 +63,8 @@ if __name__ == '__main__':
         for algo_name_label, hit_record in hit_records.items():
 
             # use a different marker to distinguish PF-NE-EG with backtracking
-            marker = '^' if 'backtracking' in algo_name_label else 'o'
+            marker = 'x' if 'bt' in algo_name_label else 'o'
+            alpha = 0.7 if 'bt' in algo_name_label else 0.9
 
             sizes = hit_record['size']
             iters = hit_record['iter']
@@ -71,10 +72,8 @@ if __name__ == '__main__':
 
             if 'avg' in algo_name_label:
                 linestyle = '--'
-                alpha = 0.7
             else:
                 linestyle = '-'
-                alpha = 1.0
 
             algo_name = algo_name_label.split(' (')[0]
 
@@ -89,7 +88,7 @@ if __name__ == '__main__':
         ax1.grid(True, alpha=0.3)
         fig1.tight_layout()
 
-        ax2.set_xlabel(r"Instance size $s$", fontsize=12)
+        ax2.set_xlabel(r"Subset size $s$", fontsize=12)
         ax2.set_ylabel(r"Time to reach $\epsilon$", fontsize=12)
         ax2.set_title(rf"$\epsilon = {tol}$", fontsize=12)
         ax2.grid(True, alpha=0.3)
