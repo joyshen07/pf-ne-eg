@@ -53,6 +53,7 @@ class ExperimentConfig:
     """Configuration for experiments"""
     max_iter: int = 1000
     tol: float = 1e-6
+    max_time: int = 60
     num_trials: int = 1
     seed: int = 42
     verbose: bool = False
@@ -91,6 +92,7 @@ class ExperimentRunner:
                         problem, x0, y0,
                         max_iter=self.config.max_iter,
                         tol=self.config.tol,
+                        max_time=self.config.max_time,
                         verbose=self.config.verbose
                     )
 

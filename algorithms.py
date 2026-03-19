@@ -111,7 +111,7 @@ class SaddlePointAlgorithm(ABC):
 
     def optimize(self, problem: SaddlePointProblem,
                  x0: np.ndarray, y0: np.ndarray,
-                 max_iter: int = 1000, tol: float = 1e-6,
+                 max_iter: int = 1000, tol: float = 1e-6, max_time = 60,
                  verbose: bool = False) -> Dict:
         """Run saddle point algorithm
 
@@ -120,6 +120,7 @@ class SaddlePointAlgorithm(ABC):
             x0, y0: Initial iterates
             max_iter: Maximum iterations
             tol: Convergence tolerance
+            max_time: Maximum time to run
             verbose: Print progress
         """
 
@@ -195,6 +196,8 @@ class SaddlePointAlgorithm(ABC):
             if verbose and (i % 100 == 0 or i < 10):
                 print(f"Iter {i}: {convergence_metric} = {self.history[convergence_metric][-1]:.6f}, "
                       f"stepsize = {self.step_size: .5f}")
+                if np.sum(self.history['time']) > max_time:
+                    break
 
         result = {
             # 'final_x': x,
