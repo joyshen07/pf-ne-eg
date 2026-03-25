@@ -598,15 +598,15 @@ class PfNeEgBacktracking(SaddlePointAlgorithm):
                 gx, gy = problem.gradient(x, y)
 
             # Extrapolation step
-            x_tilde = x - self.step_size * gx
-            y_tilde = y + self.step_size * gy
+            x_tilde = x - step_size * gx
+            y_tilde = y + step_size * gy
 
             x_tilde, y_tilde = problem.project(x_tilde, y_tilde)
 
             # Correction step using gradient at extrapolated point
             gx_tilde, gy_tilde = problem.gradient(x_tilde, y_tilde)
-            x_new = x - self.step_size * gx_tilde
-            y_new = y + self.step_size * gy_tilde
+            x_new = x - step_size * gx_tilde
+            y_new = y + step_size * gy_tilde
 
             x_new_proj, y_new_proj = problem.project(x_new, y_new)
 
