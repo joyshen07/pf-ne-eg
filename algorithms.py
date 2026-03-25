@@ -540,11 +540,11 @@ class PfNeEg(SaddlePointAlgorithm):
         gx, gy = problem.gradient(x, y)
         self.cached_gx, self.cached_gy = gx, gy
 
-        # Update stepsize
+        # Update stepsize (to save gradient computation)
         if self.prev_x_tilde is not None:
             L_local = compute_local_lip(x, y, self.prev_x_tilde, self.prev_y_tilde,
                                         gx, gy, self.prev_gx_tilde, self.prev_gy_tilde)
-            self.step_size = min(self.step_size, self.theta / L_local)
+            self.step_size = min(self.step_size, 1. / L_local)
 
         # Extrapolation step
         x_tilde = x - self.step_size * gx
