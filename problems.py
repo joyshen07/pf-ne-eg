@@ -314,7 +314,7 @@ class GroupFairnessClassification(SaddlePointProblem):
                 n_informative=self.n_features - 3,
                 n_redundant=2,
                 flip_y=0.1 * (i ** 2) / self.n_groups ** 2,  # Escalating label noise
-                weights=[0.5 + (0.1 * i), 0.5 - (0.1 * i)],  # Shifting class balance
+                weights=[0.5 + (0.1 * i / self.n_groups), 0.5 - (0.1 * i / self.n_groups)],  # Shifting class balance
                 random_state=self.seed + i
             )
 
