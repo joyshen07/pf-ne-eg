@@ -5,7 +5,7 @@ from problems import *
 if __name__ == "__main__":
 
     # Setup
-    config = ExperimentConfig(max_iter=100000, tol=1e-6, num_trials=1, verbose=True, save_path='output_server')
+    config = ExperimentConfig(max_iter=10000, tol=1e-6, num_trials=1, verbose=True, save_path='output')
     runner = ExperimentRunner(config)
 
     # Define problems
@@ -36,3 +36,7 @@ if __name__ == "__main__":
     runner.load_results('+'.join(problem_names) + f'+iter{config.max_iter}')
 
     runner.time_table()
+
+    # Visualize results
+    for prob_name in problem_names:
+        runner.plot_convergence(prob_name, metric_to_plot='sp_gap')

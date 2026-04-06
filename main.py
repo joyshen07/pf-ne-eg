@@ -33,21 +33,22 @@ if __name__ == "__main__":
     # problems = [gamma_star]
     # problem_names = [f'GammaStar-{gamma_star.d}-{gamma_star.s}']
 
-    step_size_guess = .8
-    M_norm = 50
+    step_size_guess = .1
+    M_norm = 1 / step_size_guess / .5  # 50
 
     # Define algorithms
     algorithms = [
         # SPMirrorDescent(lipschitz=M_norm, diameter=diameter, max_iter=config.max_iter),
         Extragradient(lipschitz=M_norm),
-        AdaptExtragradient(step_size=step_size_guess),
-        PfNeEg(step_size=step_size_guess),
-        PfNeEgBacktracking(step_size=step_size_guess),
         # UniversalMirrorProx(diameter=diameter, G0=M_norm),
         AdaptiveMirrorProx(step_size=step_size_guess),
         AdaProx(step_size=step_size_guess),
         AGRAAL(step_size=step_size_guess, phi=2., lmd_bar=step_size_guess),
         AdaPEG(step_size=step_size_guess),
+        AdaptExtragradient(step_size=step_size_guess),
+        PfNeEg(step_size=step_size_guess),
+        PfNeEgBacktracking(step_size=step_size_guess),
+        PfNeEgAdaBacktracking(step_size=step_size_guess),
         # OptimisticGradient(step_size=0.01),
     ]
 
@@ -56,7 +57,7 @@ if __name__ == "__main__":
 
     # Visualize results
     for prob_name in problem_names:
-        runner.plot_convergence(prob_name)
+        runner.plot_convergence(prob_name, show_legend=False)
 
     # Save results
     runner.save_results('+'.join(problem_names) + f'+iter{config.max_iter}')
