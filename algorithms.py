@@ -633,3 +633,62 @@ class PfNeEgBacktracking(SaddlePointAlgorithm):
 
         return x_new_proj, y_new_proj
 
+
+class PfNeEgAdaBacktracking(SaddlePointAlgorithm):
+    """Extragradient method with adaptive backtracking linesearch stepsize."""
+
+    def __init__(self, step_size: float = 0.5, mult: float = 0.9, theta: float = 0.9):
+        super().__init__(f"PF-NE-EG AdaBt", track_iterates='last')
+        self.step_size = step_size
+        self.mult = mult
+        self.theta = theta
+        self.max_backtracks = 20  # max_backtracks
+
+    def step(self, x: np.ndarray, y: np.ndarray,
+             problem: SaddlePointProblem, iteration: int) -> Tuple[np.ndarray, np.ndarray]:
+
+        step_size = self.step_size
+
+        for backtrack_iter in range(self.max_backtracks):
+
+            # Extrapolation step with current alpha
+            if iteration > 0:
+                gx, gy = self.cached_gx, self.cached_gy
+            else:
+                gx, gy = problem.gradient(x, y)
+
+            # Extrapolation step
+            x_tilde = x - step_size * gx
+            y_tilde = y + step_size * gy
+
+            x_tilde, y_tilde = problem.project(x_tilde, y_tilde)
+
+            # Correction step using gradient at extrapolated point
+            gx_tilde, gy_tilde = problem.gradient(x_tilde, y_tilde)
+            x_new = x - step_size * gx_tilde
+            y_new = y + step_size * gy_tilde
+
+            x_new_proj, y_new_proj = problem.project(x_new, y_new)
+
+            # Operator applied to new iterate for stepsize update
+            gx_new, gy_new = problem.gradient(x_new_proj, y_new_proj)
+
+            # Check backtracking condition using local Lipschitz constants
+            L0 = compute_local_lip(x, y, x_tilde, y_tilde,
+                                   gx, gy, gx_tilde, gy_tilde)
+            L1 = compute_local_lip(x_new_proj, y_new_proj, x_tilde, y_tilde,
+                                   gx_new, gy_new, gx_tilde, gy_tilde)
+            if (step_size * L0 <= (1 + self.theta) / 2) and (step_size * L1 <= 1.):
+                mult = 1 + 1 / np.log(iteration + 2)
+                # Update initial stepsize for next iteration
+                self.step_size = min(step_size * mult, self.theta / L0, self.theta / L1)
+                break
+
+            # Backtrack: reduce step size
+            step_size *= self.mult
+
+        # Store current state for next iteration
+        self.cached_gx = gx_new.copy()
+        self.cached_gy = gy_new.copy()
+
+        return x_new_proj, y_new_proj
