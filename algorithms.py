@@ -243,8 +243,8 @@ class SPMirrorDescent(SaddlePointAlgorithm):
 class Extragradient(SaddlePointAlgorithm):
     """Extragradient method (Korpelevich, 1976)"""
 
-    def __init__(self, lipschitz: float):
-        super().__init__(f"EG", track_iterates='both')
+    def __init__(self, lipschitz: float, track_iterates: str = 'both'):
+        super().__init__(f"EG", track_iterates=track_iterates)
         self.step_size = 1 / lipschitz
 
     def step(self, x: np.ndarray, y: np.ndarray,
@@ -578,7 +578,7 @@ class PfNeEgBacktracking(SaddlePointAlgorithm):
     """Extragradient method with backtracking linesearch stepsize."""
 
     def __init__(self, step_size: float = 0.5, mult: float = 0.9, theta: float = 0.9):
-        super().__init__(f"PF-NE-EG bt", track_iterates='last')
+        super().__init__(f"PF-NE-EG Bt", track_iterates='last')
         self.step_size = step_size
         self.mult = mult
         self.theta = theta
