@@ -446,7 +446,7 @@ class LinxDoubleScaling(MESP):
         super().__init__(d, 2 * d)
         self.L_inv = None
         self.opt_val = None
-        self.metrics = {'lb_diff': self.lower_bound}
+        self.metrics = {'nat_res': self.natural_residual}  #, 'lb_diff': self.lower_bound}
 
     def project(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Project onto probability simplices"""

@@ -8,7 +8,7 @@ from problems import SaddlePointProblem
 
 DEFAULT_METRIC_PRIORITY = [
     'sp_gap',
-    'lb_diff',
+    # 'lb_diff',
     'dist_to_opt',
     'nat_res'
 ]
