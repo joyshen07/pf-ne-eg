@@ -4,6 +4,7 @@ import numpy as np
 import copy
 import matplotlib.pyplot as plt
 import pickle
+import os
 
 from problems import SaddlePointProblem
 from algorithms import SaddlePointAlgorithm
@@ -39,7 +40,8 @@ METRIC_NAME_MAPPING = {
 ALGO_COLOR_MAPPING = {
     'EG': 'tab:blue',
     'PF-NE-EG': 'tab:orange',
-    'PF-NE-EG bt': 'tab:red',
+    'PF-NE-EG Bt': 'tab:red',
+    'PF-NE-EG AdaBt': 'tab:brown',
     'Adapt EG': 'tab:green',
     'Universal MP': 'tab:gray',
     'Adaptive MP': 'tab:pink',
@@ -123,13 +125,15 @@ class ExperimentRunner:
 
         return self.results
 
-    def plot_convergence(self, problem_name: str = None, metric_to_plot: str = 'auto', use_log: bool = True):
+    def plot_convergence(self, problem_name: str = None, metric_to_plot: str = 'auto', use_log: bool = True,
+                         show_legend: bool = True):
         """Plot convergence curves for a specific problem
 
         Args:
             problem_name: Name of problem to plot
             metric_to_plot: Name of metric to plot
             use_log: Use log scale for plots
+            show_legend: Show legend or not
         """
         if problem_name is None:
             # take any problem from results
