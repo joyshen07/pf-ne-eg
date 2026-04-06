@@ -16,18 +16,13 @@ plt.rcParams.update({
 })
 
 
-# TODO: distinguish server (no interactive plot) and pc/mac
-is_on_server = False
-try:
-    # # Attempt interactive plotting
-    # matplotlib.use("TkAgg")
-    plt.figure()
-except ModuleNotFoundError:
-    # Fallback for servers
-    is_on_server = True
-# is_on_server = True
-save_fig = True
-show_legend = False
+# distinguish server (no interactive plot), Mac (default GUI), and PC (specify GUI)
+is_on_server = 'HOSTNAME' in os.environ
+save_fig = not is_on_server
+if save_fig:
+    import matplotlib
+    if 'zsh' not in os.environ['SHELL']:
+        matplotlib.use("TkAgg")
 
 
 # TODO: wrap metric names, functions etc into a class
