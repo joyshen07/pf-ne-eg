@@ -2,7 +2,6 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
-from problems import LinxDoubleScaling
 from experiments import ALGO_COLOR_MAPPING
 
 
@@ -14,10 +13,11 @@ plt.rcParams.update({
 
 if __name__ == '__main__':
 
-    with open("output/LinxDoubleScaling-124-20to100-tol0.1.pkl", "rb") as f:
+    filepath = "output_server/LinxDoubleScaling-124-20to100-tol0.0005.pkl"
+    with open(filepath, "rb") as f:
         results = pickle.load(f)
 
-    for tol in [1e-1]:
+    for tol in [float(filepath.split('-')[-1][3:-4])]:
 
         hit_records = {}
 
@@ -26,13 +26,12 @@ if __name__ == '__main__':
             d = int(prob_name.split('-')[-2])
             s = int(prob_name.split('-')[-1])
 
-            with open(f"output/proxy-{d}-{s}-iter100000.pkl", "rb") as f:
-                z_proxy = pickle.load(f)
-            opt = LinxDoubleScaling(d=d, s=s).lower_bound(z_proxy['x'], z_proxy['y'])
+            if s == 20:
+                continue
 
             for algo_name, trials in prob_results.items():
 
-                for metric_name in ['lb_diff', 'avg_lb_diff']:
+                for metric_name in ['nat_res', 'avg_nat_res']:
 
                     if metric_name not in trials:
                         continue
@@ -40,13 +39,13 @@ if __name__ == '__main__':
                         algo_name_label = algo_name + ' (avg)'
                     else:
                         algo_name_label = algo_name + ' (last)'
+
                     if algo_name_label not in hit_records:
                         hit_records[algo_name_label] = {'size': [], 'iter': [], 'time': []}
 
                     values = trials[metric_name][0]
                     times = trials['time'][0]
 
-                    # hits = np.where(opt - np.array(values) <= tol)[0]
                     hits = np.where(np.array(values) <= tol)[0]
 
                     if len(hits) > 0:
@@ -63,8 +62,13 @@ if __name__ == '__main__':
         for algo_name_label, hit_record in hit_records.items():
 
             # use a different marker to distinguish PF-NE-EG with backtracking
-            marker = 'x' if 'bt' in algo_name_label else 'o'
-            alpha = 0.7 if 'bt' in algo_name_label else 0.9
+            marker = 'x' if 'Bt' in algo_name_label else 'o'
+            alpha = 0.7 if 'Bt' in algo_name_label else 0.9
+            if 'AdaBt' in algo_name_label:
+                marker = 'P'
+                alpha = 0.7
+            if algo_name_label == 'PF-NE-EG (last)':
+                marker = 's'
 
             sizes = hit_record['size']
             iters = hit_record['iter']

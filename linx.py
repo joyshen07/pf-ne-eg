@@ -5,7 +5,7 @@ from problems import *
 
 if __name__ == "__main__":
     # Setup
-    config = ExperimentConfig(max_iter=6000, tol=1e-1, num_trials=1, verbose=True)
+    config = ExperimentConfig(max_iter=200000, tol=5*1e-4, max_time=600, num_trials=1, verbose=True)
     runner = ExperimentRunner(config)
 
     # Define problems
@@ -22,14 +22,15 @@ if __name__ == "__main__":
 
     # Define algorithms
     algorithms = [
-        Extragradient(lipschitz=M_norm),
-        AdaptiveMirrorProx(step_size=step_size_guess),
-        AdaProx(step_size=step_size_guess),
-        AGRAAL(step_size=step_size_guess, phi=2., lmd_bar=step_size_guess),
-        AdaPEG(step_size=step_size_guess),
+        Extragradient(lipschitz=M_norm, track_iterates='last'),
+        # AdaptiveMirrorProx(step_size=step_size_guess),
+        # AdaProx(step_size=step_size_guess),
+        # AGRAAL(step_size=step_size_guess, phi=2., lmd_bar=step_size_guess),
+        # AdaPEG(step_size=step_size_guess),
         AdaptExtragradient(step_size=step_size_guess),
         PfNeEg(step_size=step_size_guess),
         PfNeEgBacktracking(step_size=step_size_guess),
+        PfNeEgAdaBacktracking(step_size=step_size_guess)
     ]
 
     # Run experiments
