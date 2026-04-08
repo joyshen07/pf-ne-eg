@@ -239,10 +239,12 @@ class LASSO(SaddlePointProblem):
         """
         self.lmd = lmd
         self.sparsity = sparsity
-        super().__init__(dim_x, dim_y, seed)
+        self.A_dim_y = dim_y
+        super().__init__(dim_x, dim_x, seed)
+        self.metrics = {'nat_res': self.natural_residual}
 
     def _setup(self):
-        self.A = np.random.randn(self.dim_y, self.dim_x)
+        self.A = np.random.randn(self.A_dim_y, self.dim_x)
         # Normalize columns to have unit norm (standard for Lasso)
         self.A /= np.linalg.norm(self.A, axis=0)
 
@@ -252,10 +254,7 @@ class LASSO(SaddlePointProblem):
         x_true[indices] = np.random.randn(len(indices))
 
         # Generate observations with some noise
-        self.b = self.A @ x_true + 0.05 * np.random.randn(self.dim_y)
-
-        # Standard rule for picking lambda
-        self.lmd = 0.1 * np.max(np.abs(self.A.T @ self.b))
+        self.b = self.A @ x_true + 0.05 * np.random.randn(self.A_dim_y)
 
     def project(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Project onto probability simplices"""
@@ -263,13 +262,13 @@ class LASSO(SaddlePointProblem):
 
     def objective(self, x: np.ndarray, y: np.ndarray) -> float:
         residual = self.A @ x - self.b
-        return 0.5 * np.sum(residual ** 2) + self.lmd * y.T @ self.A @ x
+        return 0.5 * np.sum(residual ** 2) + y.T @ x
 
     def grad_x(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        return self.A.T @ (self.A @ x - self.b) + self.A.T @ y
+        return self.A.T @ (self.A @ x - self.b) + y
 
     def grad_y(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        return self.A @ x
+        return x
 
     def initial_point(self) -> Tuple[np.ndarray, np.ndarray]:
         """Start with uniform distribution"""
