@@ -276,6 +276,31 @@ class LASSO(SaddlePointProblem):
         y0 = np.zeros(self.dim_y)
         return self.project(x0, y0)
 
+    def saddle_point_gap(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Computes the Saddle Point gap for the Lasso minimax problem.
+        """
+
+        # Compute primal objective
+        # 0.5 * ||Ax - b||^2 + lmd * ||Ax||_1
+        residual = self.A @ x - self.b
+        primal_val = 0.5 * np.sum(residual ** 2) + self.lmd * np.linalg.norm(x, 1)
+
+        # Compute dual objective
+        # min_x { 0.5 * ||Ax - b||^2 + lmd * <y, Ax> }
+        # Solve A^T A x = A^T (b - lmd * y)
+        AtA = self.A.T @ self.A
+        rhs = self.A.T @ self.b - self.lmd * y
+
+        try:
+            x_opt = np.linalg.solve(AtA, rhs)
+        except np.linalg.LinAlgError:
+            return np.nan  # Fallback if AtA is singular
+
+        dual_val = self.objective(x_opt, y)
+
+        return primal_val - dual_val
+
 
 class GroupFairnessClassification(SaddlePointProblem):
     """Group fairness classification problem"""

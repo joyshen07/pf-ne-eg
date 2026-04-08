@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     # lasso = LASSO(dim_x=250, dim_y=1000, sparsity=.5)
     # problems = [lasso]
-    # problem_names = [f'LASSO-{lasso.dim_x}x{lasso.dim_y}-sparsity{lasso.sparsity}']
+    # problem_names = [f'LASSO-{lasso.dim_x}x{lasso.A_dim_y}-sparsity{lasso.sparsity}']
 
     fairness = GroupFairnessClassification(n_groups=20, n_samples_per_group=100, n_features=100)
     problems = [fairness]

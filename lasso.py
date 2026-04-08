@@ -18,7 +18,7 @@ if __name__ == "__main__":
         # Define problems
         lasso = LASSO(dim_x=dim_x, dim_y=dim_y, sparsity=sparsity)
         problems = [lasso]
-        problem_names = [f'LASSO-{lasso.dim_x}x{lasso.dim_y}-sparsity{lasso.sparsity}']
+        problem_names = [f'LASSO-{lasso.dim_x}x{lasso.A_dim_y}-sparsity{lasso.sparsity}']
 
         if 'HOSTNAME' in os.environ:
 
@@ -65,4 +65,7 @@ if __name__ == "__main__":
 
             # Visualize results
             for prob_name in problem_names:
-                runner.plot_convergence(prob_name, metric_to_plot='nat_res', show_legend=show_legend)
+                runner.plot_convergence(prob_name, show_legend=show_legend)
+
+            # Save results
+            runner.save_results('+'.join(problem_names) + f'+iter{config.max_iter}')

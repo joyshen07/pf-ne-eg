@@ -5,20 +5,20 @@ from problems import *
 if __name__ == "__main__":
 
     # Setup
-    config = ExperimentConfig(max_iter=10000, tol=1e-6, num_trials=1, verbose=True, save_path='output')
+    config = ExperimentConfig(max_iter=10000, tol=1e-6, num_trials=1, verbose=True, save_path='output_server')
     runner = ExperimentRunner(config)
 
-    # Define problems
-    matrix_game = MatrixGameProblem(dim_x=100, dim_y=100, sparsity=1., seed=config.seed)
-    problems = [matrix_game]
-    problem_names = [f"MatrixGame-{matrix_game.dim_x}x{matrix_game.dim_y}-sparsity{matrix_game.sparsity}"]
-    # Compute proper step size: α < 1/||M||
-    M_norm = np.linalg.norm(matrix_game.M, ord=2)
-    diameter = np.sqrt(2)
+    # # Define problems
+    # matrix_game = MatrixGameProblem(dim_x=100, dim_y=100, sparsity=1., seed=config.seed)
+    # problems = [matrix_game]
+    # problem_names = [f"MatrixGame-{matrix_game.dim_x}x{matrix_game.dim_y}-sparsity{matrix_game.sparsity}"]
+    # # Compute proper step size: α < 1/||M||
+    # M_norm = np.linalg.norm(matrix_game.M, ord=2)
+    # diameter = np.sqrt(2)
 
-    # lasso = LASSO(dim_x=500, dim_y=5000, sparsity=.1)
-    # problems = [lasso]
-    # problem_names = [f'LASSO-{lasso.dim_x}x{lasso.dim_y}-sparsity{lasso.sparsity}']
+    lasso = LASSO(dim_x=250, dim_y=2000, sparsity=.5)
+    problems = [lasso]
+    problem_names = [f'LASSO-{lasso.dim_x}x{lasso.A_dim_y}-sparsity{lasso.sparsity}']
 
     # fairness = GroupFairnessClassification(n_groups=20, n_samples_per_group=200, n_features=50)
     # problems = [fairness]
@@ -39,4 +39,4 @@ if __name__ == "__main__":
 
     # Visualize results
     for prob_name in problem_names:
-        runner.plot_convergence(prob_name, metric_to_plot='sp_gap')
+        runner.plot_convergence(prob_name, metric_to_plot='sp_gap', show_legend=True)
