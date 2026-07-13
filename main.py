@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # problem_names = [f'GammaStar-{gamma_star.d}-{gamma_star.s}']
 
     step_size_guess = .1
-    M_norm = 1 / step_size_guess / .5  # 50
+    M_norm = 1 / step_size_guess / .5
 
     # Define algorithms
     algorithms = [

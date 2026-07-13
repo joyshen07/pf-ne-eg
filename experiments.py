@@ -27,8 +27,8 @@ if save_fig:
 
 # TODO: wrap metric names, functions etc into a class
 METRIC_NAME_MAPPING = {
-    'sp_gap': 'Saddle-point gap',
-    'dist_to_opt': 'Distance to proxy optimal solution',
+    'sp_gap': 'saddle-point gap',
+    'dist_to_opt': 'distance to proxy optimal solution',
     'lb_diff': r'lower bound $-$ best lower bound',
     'nat_res': r'natural residual'
 }
@@ -184,7 +184,12 @@ class ExperimentRunner:
                 # Plot saddle point gap
                 plot = ax.loglog if use_log else ax.plot
                 last_avg = 'avg' if metric.startswith('avg_') else 'last'
-                plot(iters, mean_convergence, label=f"{algo_name_label} ({last_avg})",
+                algo_name_label_cp = algo_name_label
+                if algo_name_label == 'PF-NE-EG Bt':
+                    algo_name_label_cp = 'PF-NE-EG b\''
+                if algo_name_label == 'PF-NE-EG AdaBt':
+                    algo_name_label_cp = 'PF-NE-EG b'
+                plot(iters, mean_convergence, label=f"{algo_name_label_cp} ({last_avg})",
                      linewidth=2, alpha=alpha, linestyle=linestyle, color=ALGO_COLOR_MAPPING[algo_name_label])
 
         # Configure plot
