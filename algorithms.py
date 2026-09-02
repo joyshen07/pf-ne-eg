@@ -563,7 +563,7 @@ class PfNeEg(SaddlePointAlgorithm):
         # Update stepsize
         L_local = compute_local_lip(x, y, x_tilde, y_tilde,
                                     gx, gy, gx_tilde, gy_tilde)
-        mult = 1 + 1 / np.log(iteration + 2)
+        mult = lambda_multiplier(iteration)
         self.step_size = min(self.step_size * mult, self.theta / L_local)
 
         # Store current state for next iteration
@@ -680,7 +680,7 @@ class PfNeEgAdaBacktracking(SaddlePointAlgorithm):
             L1 = compute_local_lip(x_new_proj, y_new_proj, x_tilde, y_tilde,
                                    gx_new, gy_new, gx_tilde, gy_tilde)
             if (step_size * L0 <= (1 + self.theta) / 2) and (step_size * L1 <= 1.):
-                mult = 1 + 1 / np.log(iteration + 2)
+                mult = lambda_multiplier(iteration)
                 # Update initial stepsize for next iteration
                 self.step_size = min(step_size * mult, self.theta / L0, self.theta / L1)
                 break
@@ -693,3 +693,7 @@ class PfNeEgAdaBacktracking(SaddlePointAlgorithm):
         self.cached_gy = gy_new.copy()
 
         return x_new_proj, y_new_proj
+
+
+def lambda_multiplier(t: int):
+    return np.exp(1. / ((t + 2) * np.log(t + 2) ** (1 + 0.1)))
