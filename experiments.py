@@ -18,8 +18,7 @@ plt.rcParams.update({
 
 # distinguish server (no interactive plot), Mac (default GUI), and PC (specify GUI)
 is_on_server = 'HOSTNAME' in os.environ
-save_fig = not is_on_server
-if save_fig:
+if not is_on_server:
     import matplotlib
     if 'zsh' not in os.environ['SHELL']:
         matplotlib.use("TkAgg")
@@ -121,7 +120,7 @@ class ExperimentRunner:
         return self.results
 
     def plot_convergence(self, problem_name: str = None, metric_to_plot: str = 'auto', use_log: bool = True,
-                         show_legend: bool = True):
+                         show_legend: bool = True, show_fig: bool = False, save_fig: bool = False):
         """Plot convergence curves for a specific problem
 
         Args:
@@ -201,7 +200,7 @@ class ExperimentRunner:
         fig.tight_layout()
 
         # Save or show
-        if not is_on_server:
+        if show_fig and not is_on_server:
             fig.show()
         if save_fig:
             filepath = f'{self.config.save_path}/{problem_name}.pdf'
